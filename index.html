@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lockout Response — 1Now Client Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F1F0EC;
+    --surface: #FFFFFF;
+    --ink: #14171F;
+    --muted: #5B6270;
+    --border: #DEDCD4;
+    --primary: #1F3A5F;
+    --primary-dark: #14263F;
+    --accent-urgent: #D64550;
+    --accent-warn: #B9791F;
+    --accent-ok: #2F8F5B;
+    --console-bg: #0F1720;
+    --console-line: #E7EAF0;
+    --console-dim: #7C8798;
+    --console-border: #24303E;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .topbar-title {
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+
+  .topbar-sub {
+    color: var(--muted);
+    font-size: 12.5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .queue-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--accent-urgent);
+    background: rgba(214, 69, 80, 0.08);
+    border: 1px solid rgba(214, 69, 80, 0.3);
+    padding: 5px 10px;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .queue-pill::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-urgent);
+    animation: pulse 1.6s infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .queue-pill::before { animation: none; }
+    .log-line, .resolution-card { animation: none !important; opacity: 1 !important; transform: none !important; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(340px, 420px) 1fr;
+    min-height: calc(100vh - 65px);
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- LEFT: INTAKE FORM ---------- */
+
+  .intake {
+    padding: 28px;
+    border-right: 1px solid var(--border);
+    transition: opacity 0.15s ease;
+  }
+
+  .intake.busy {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .panel-heading {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 22px 0;
+  }
+
+  .field {
+    margin-bottom: 18px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .field-hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  select, input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13.5px;
+    color: var(--ink);
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235B6270'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  select:focus, input[type="text"]:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+
+  .custom-input {
+    margin-top: 8px;
+    display: none;
+  }
+
+  .custom-input.visible {
+    display: block;
+  }
+
+  .field-error {
+    display: none;
+    font-size: 11.5px;
+    color: var(--accent-urgent);
+    margin-top: 5px;
+  }
+
+  .field-error.visible { display: block; }
+
+  .booking-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .booking-preview.visible { display: block; }
+
+  .booking-preview-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    color: var(--muted);
+  }
+
+  .booking-preview-row span:last-child {
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    text-align: right;
+  }
+
+  .run-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 8px;
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .run-btn:hover:not(:disabled) { background: var(--primary-dark); }
+  .run-btn:active:not(:disabled) { transform: translateY(1px); }
+  .run-btn:disabled { background: #A6ADB8; cursor: not-allowed; }
+
+  .spinner {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  .run-btn.running .spinner { display: inline-block; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .reset-link {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* ---------- RIGHT: DISPATCH LOG ---------- */
+
+  .dispatch {
+    background: var(--console-bg);
+    padding: 28px;
+    color: var(--console-line);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dispatch-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .dispatch-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--console-dim);
+  }
+
+  .dispatch-timer {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--console-dim);
+  }
+
+  .console {
+    flex: 1;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.85;
+    min-height: 220px;
+  }
+
+  .console-empty {
+    color: var(--console-dim);
+    font-size: 13px;
+    padding-top: 8px;
+  }
+
+  .log-line {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(2px);
+    animation: appear 0.28s ease forwards;
+  }
+
+  @keyframes appear {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-icon {
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+    padding-top: 1px;
+  }
+
+  .log-line.check .log-icon { color: var(--console-dim); }
+  .log-line.info .log-icon { color: #6FA8DC; }
+  .log-line.ok .log-icon { color: #5BC98B; }
+  .log-line.warning .log-icon { color: #E3B23C; }
+  .log-line.error .log-icon { color: #F0707E; }
+  .log-line.action .log-icon { color: #C79CE8; }
+  .log-line.done .log-icon { color: var(--console-dim); }
+
+  .log-text.check, .log-text.done { color: var(--console-dim); }
+  .log-text.info { color: #A9CBF0; }
+  .log-text.ok { color: #8CDBAE; }
+  .log-text.warning { color: #F0CE87; }
+  .log-text.error { color: #F5A0AA; }
+  .log-text.action { color: #DABCF0; }
+
+  .resolution-card {
+    margin-top: 22px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--console-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    opacity: 0;
+    animation: appear 0.4s ease forwards;
+  }
+
+  .resolution-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 100px;
+    margin-bottom: 12px;
+  }
+
+  .resolution-status.resolved { background: rgba(91, 201, 139, 0.14); color: #7FE0A8; border: 1px solid rgba(91,201,139,0.35); }
+  .resolution-status.escalated { background: rgba(240, 112, 126, 0.14); color: #F5A0AA; border: 1px solid rgba(240,112,126,0.35); }
+  .resolution-status.hold { background: rgba(227, 178, 60, 0.14); color: #F0CE87; border: 1px solid rgba(227,178,60,0.35); }
+
+  .resolution-outcome {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 14px 0;
+  }
+
+  .resolution-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+    margin-bottom: 14px;
+  }
+
+  .resolution-item .rlabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--console-dim);
+    margin-bottom: 3px;
+  }
+
+  .resolution-item .rvalue {
+    font-size: 13px;
+    color: var(--console-line);
+  }
+
+  .renter-message-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .copy-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--console-dim);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--console-border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .copy-btn:hover { color: var(--console-line); border-color: var(--console-dim); }
+  .copy-btn.copied { color: #7FE0A8; border-color: rgba(91,201,139,0.35); }
+
+  .renter-message {
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid #6FA8DC;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #C7D3E3;
+    line-height: 1.5;
+  }
+
+  .followup {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: #F0CE87;
+    display: flex;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-mark">1N</div>
+    <div>
+      <div class="topbar-title">Lockout Response Console</div>
+      <div class="topbar-sub">Client Support · Fleet Ops</div>
+    </div>
+  </div>
+  <div class="queue-pill">1 active lockout</div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: INTAKE -->
+  <div class="intake" id="intake">
+    <div class="panel-label">Intake</div>
+    <h2 class="panel-heading">Renter locked out mid-rental</h2>
+
+    <!-- BOOKING FIELD -->
+    <div class="field">
+      <label for="bookingId">Booking</label>
+      <select id="bookingId">
+        <option value="">Select a booking…</option>
+        <option value="BK-1042">BK-1042 — Jordan Ellis</option>
+        <option value="BK-2087">BK-2087 — Casey Nguyen</option>
+        <option value="BK-3399">BK-3399 — Priya Shah</option>
+        <option value="other">Other / Custom Booking ID…</option>
+      </select>
+      <input type="text" id="bookingCustom" class="custom-input" placeholder="Enter custom Booking ID (e.g., BK-9999)" maxlength="60" />
+      <div id="bookingPreview" class="booking-preview"></div>
+    </div>
+
+    <!-- REASON FIELD -->
+    <div class="field">
+      <label for="reason">What's happening</label>
+      <select id="reason">
+        <option value="">Select a reason…</option>
+        <option value="locked_inside">Keys are locked inside the vehicle</option>
+        <option value="lost_keys">Keys are lost entirely</option>
+        <option value="fob_dead">Key fob is dead or broken</option>
+        <option value="app_unlock_failed">Tried app unlock — it failed</option>
+        <option value="other">Other / Custom issue…</option>
+      </select>
+      <input type="text" id="reasonCustom" class="custom-input" placeholder="Describe the custom issue…" maxlength="140" />
+    </div>
+
+    <!-- LOCATION FIELD -->
+    <div class="field">
+      <label for="location">Renter's location</label>
+      <select id="location">
+        <option value="">Select location…</option>
+        <option value="at_host">At the host's pickup location</option>
+        <option value="away_serviceable">Away from host, normal coverage area</option>
+        <option value="away_remote">Away from host, remote / limited coverage area</option>
+        <option value="other">Other / Custom location…</option>
+      </select>
+      <input type="text" id="locationCustom" class="custom-input" placeholder="Enter custom location details…" maxlength="140" />
+      <div class="field-hint">Used to check locksmith coverage and spare-key handoff options.</div>
+    </div>
+
+    <!-- TIME FIELD -->
+    <div class="field">
+      <label for="time">Time of request</label>
+      <select id="time">
+        <option value="">Select time…</option>
+        <option value="business_hours">Business hours (8am–8pm)</option>
+        <option value="after_hours">After hours</option>
+      </select>
+      <div class="field-hint">After-hours requests route to emergency locksmiths at premium rates.</div>
+    </div>
+
+    <button class="run-btn" id="runBtn" disabled>
+      <span class="spinner"></span>
+      <span id="runBtnLabel">Run routing</span>
+    </button>
+    <button class="reset-link" id="resetBtn">Reset intake</button>
+  </div>
+
+  <!-- RIGHT: DISPATCH LOG -->
+  <div class="dispatch">
+    <div class="dispatch-heading">
+      <div class="dispatch-title">Dispatch log</div>
+      <div class="dispatch-timer" id="timer"></div>
+    </div>
+    <div class="console" id="console" role="log" aria-live="polite">
+      <div class="console-empty">Fill in the intake form and run routing to see the decision trace here.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- MOCK DATA ----------
+  const BOOKINGS = {
+    'BK-1042': {
+      renter: 'Jordan Ellis',
+      vehicle: 'Toyota Camry — Fleet #12',
+      vehicleId: 'V12',
+      status: 'active',
+      host: 'Marcus (Miami host)',
+      identityVerified: true
+    },
+    'BK-2087': {
+      renter: 'Casey Nguyen',
+      vehicle: 'Jeep Wrangler — Fleet #05',
+      vehicleId: 'V05',
+      status: 'active',
+      host: 'Dana (Orlando host)',
+      identityVerified: false
+    },
+    'BK-3399': {
+      renter: 'Priya Shah',
+      vehicle: 'Tesla Model 3 — Fleet #21',
+      vehicleId: 'V21',
+      status: 'completed',
+      host: 'Marcus (Miami host)',
+      identityVerified: true
+    }
+  };
+
+  const VEHICLES = {
+    V12: { lockType: 'traditional', spareKeyAvailable: true },
+    V05: { lockType: 'traditional', spareKeyAvailable: false },
+    V21: { lockType: 'smart', spareKeyAvailable: false }
+  };
+
+  // ---------- DOM ----------
+  const intakePanel = document.getElementById('intake');
+  const bookingSelect = document.getElementById('bookingId');
+  const bookingCustom = document.getElementById('bookingCustom');
+  const reasonSelect = document.getElementById('reason');
+  const reasonCustom = document.getElementById('reasonCustom');
+  const locationSelect = document.getElementById('location');
+  const locationCustom = document.getElementById('locationCustom');
+  const timeSelect = document.getElementById('time');
+  const runBtn = document.getElementById('runBtn');
+  const runBtnLabel = document.getElementById('runBtnLabel');
+  const resetBtn = document.getElementById('resetBtn');
+  const consoleEl = document.getElementById('console');
+  const bookingPreview = document.getElementById('bookingPreview');
+  const timerEl = document.getElementById('timer');
+
+  let activeTimeouts = [];
+  let isRunning = false;
+
+  function clearActiveTimeouts() {
+    activeTimeouts.forEach(clearTimeout);
+    activeTimeouts = [];
+  }
+
+  // Escape any renter/agent-facing text before it's inserted via innerHTML.
+  // Custom booking IDs, issue descriptions, and locations are free-text —
+  // never trust them as markup.
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str ?? '');
+    return div.innerHTML;
+  }
+
+  // Toggle custom text input visibility
+  function toggleCustomInput(selectEl, inputEl) {
+    if (selectEl.value === 'other') {
+      inputEl.classList.add('visible');
+      inputEl.focus();
+    } else {
+      inputEl.classList.remove('visible');
+      inputEl.value = '';
+    }
+  }
+
+  function checkFormComplete() {
+    const bookingVal = bookingSelect.value === 'other' ? bookingCustom.value.trim() : bookingSelect.value;
+    const reasonVal = reasonSelect.value === 'other' ? reasonCustom.value.trim() : reasonSelect.value;
+    const locationVal = locationSelect.value === 'other' ? locationCustom.value.trim() : locationSelect.value;
+    const timeVal = timeSelect.value;
+
+    const complete = bookingVal && reasonVal && locationVal && timeVal;
+    runBtn.disabled = !complete || isRunning;
+  }
+
+  [bookingSelect, reasonSelect, locationSelect, timeSelect].forEach(el => {
+    el.addEventListener('change', checkFormComplete);
+  });
+
+  [bookingCustom, reasonCustom, locationCustom].forEach(el => {
+    el.addEventListener('input', checkFormComplete);
+  });
+
+  bookingSelect.addEventListener('change', () => {
+    toggleCustomInput(bookingSelect, bookingCustom);
+
+    if (bookingSelect.value === 'other') {
+      bookingPreview.innerHTML = `
+        <div class="booking-preview-row"><span>Type</span><span>Custom record</span></div>
+        <div class="booking-preview-row"><span>Status</span><span>Requires manual check</span></div>
+      `;
+      bookingPreview.classList.add('visible');
+      return;
+    }
+
+    const b = BOOKINGS[bookingSelect.value];
+    if (!b) { bookingPreview.classList.remove('visible'); return; }
+    bookingPreview.innerHTML = `
+      <div class="booking-preview-row"><span>Renter</span><span>${escapeHtml(b.renter)}</span></div>
+      <div class="booking-preview-row"><span>Vehicle</span><span>${escapeHtml(b.vehicle)}</span></div>
+      <div class="booking-preview-row"><span>Status</span><span>${escapeHtml(b.status)}</span></div>
+      <div class="booking-preview-row"><span>ID verified</span><span>${b.identityVerified ? 'yes' : 'no'}</span></div>
+    `;
+    bookingPreview.classList.add('visible');
+  });
+
+  reasonSelect.addEventListener('change', () => toggleCustomInput(reasonSelect, reasonCustom));
+  locationSelect.addEventListener('change', () => toggleCustomInput(locationSelect, locationCustom));
+
+  function resetAll() {
+    clearActiveTimeouts();
+    isRunning = false;
+    runBtn.classList.remove('running');
+    runBtnLabel.textContent = 'Run routing';
+    intakePanel.classList.remove('busy');
+    [bookingSelect, reasonSelect, locationSelect, timeSelect].forEach(el => el.value = '');
+    [bookingCustom, reasonCustom, locationCustom].forEach(el => {
+      el.value = '';
+      el.classList.remove('visible');
+    });
+    bookingPreview.classList.remove('visible');
+    runBtn.disabled = true;
+    consoleEl.innerHTML = '<div class="console-empty">Fill in the intake form and run routing to see the decision trace here.</div>';
+    timerEl.textContent = '';
+  }
+
+  resetBtn.addEventListener('click', resetAll);
+
+  const ICONS = {
+    check: '·',
+    info: 'i',
+    ok: '✓',
+    warning: '!',
+    error: '✕',
+    action: '→',
+    done: '·'
+  };
+
+  // ---------- ROUTING ENGINE ----------
+  function runRouting(input) {
+    const steps = [];
+    const push = (type, text) => steps.push({ type, text });
+
+    const isCustomBooking = input.bookingIsCustom;
+    const bookingId = input.bookingId;
+
+    push('check', `Looking up booking ${escapeHtml(bookingId)}…`);
+
+    let booking = BOOKINGS[bookingId];
+
+    if (isCustomBooking) {
+      push('warning', `Custom booking ID (${escapeHtml(bookingId)}) provided — no automated system record found.`);
+      push('info', 'Defaulting to standard manual verification protocol.');
+      booking = {
+        renter: 'the renter',
+        vehicle: 'the vehicle on file',
+        vehicleId: 'CUSTOM',
+        status: 'active',
+        host: 'the local host',
+        // Unverified by default: a booking with no system record has not
+        // actually had identity confirmed, so this should not silently
+        // clear the verification gate below.
+        identityVerified: false
+      };
+    } else if (!booking) {
+      push('error', 'Booking not found.');
+      return { steps, resolution: {
+        status: 'escalated', outcome: 'Escalated — booking not found',
+        responsible: 'Support agent', cost: '—', message: null,
+        followUp: 'Manually verify renter identity and booking before proceeding.'
+      }};
+    } else {
+      push('ok', `Found booking — ${escapeHtml(booking.renter)}, ${escapeHtml(booking.vehicle)}.`);
+    }
+
+    if (booking.status !== 'active') {
+      push('error', `Booking status is "${escapeHtml(booking.status)}", not active.`);
+      return { steps, resolution: {
+        status: 'escalated', outcome: 'Escalated — rental not active',
+        responsible: 'Support agent', cost: '—', message: null,
+        followUp: 'Flag for fraud/manual review — lockout claim on a non-active rental.'
+      }};
+    }
+
+    const vehicle = VEHICLES[booking.vehicleId] || { lockType: 'traditional', spareKeyAvailable: false };
+    push('check', 'Checking lock type on vehicle record…');
+    if (booking.vehicleId === 'CUSTOM') {
+      push('info', 'Custom vehicle: assuming traditional key lock until confirmed.');
+    } else {
+      push('info', `Lock type: ${vehicle.lockType === 'smart' ? 'smart lock (app-controlled)' : 'traditional key'}.`);
+    }
+
+    let resolution = null;
+    const reasonLabel = input.reasonIsCustom ? input.reason : {
+      locked_inside: 'keys locked inside the vehicle',
+      lost_keys: 'keys lost entirely',
+      fob_dead: 'key fob dead or broken',
+      app_unlock_failed: 'app unlock attempted and failed'
+    }[input.reason] || input.reason;
+
+    // --- Path 1: custom issue handling ---
+    if (input.reasonIsCustom) {
+      push('warning', `Custom issue reported: "${escapeHtml(input.reason)}"`);
+      push('action', 'Routing custom issue to manual agent review.');
+      resolution = {
+        status: 'escalated', outcome: `Escalated — custom issue: ${input.reason}`,
+        responsible: 'Support agent', cost: 'Pending assessment',
+        message: `Hi ${booking.renter}, our team is reviewing your report ("${input.reason}") and will assist you directly.`,
+        followUp: 'Support agent needs to review custom issue details and coordinate resolution.'
+      };
+    }
+
+    // --- Path 2: smart lock remote unlock attempt ---
+    // Only applies when unlocking the door actually resolves the problem —
+    // not when the renter has no keys/fob to drive away with once inside.
+    const remoteUnlockCanResolve = input.reason === 'locked_inside';
+    if (!resolution && vehicle.lockType === 'smart' && remoteUnlockCanResolve) {
+      push('action', 'Attempting remote unlock via 1Now app…');
+      push('ok', 'Remote unlock succeeded.');
+      resolution = {
+        status: 'resolved', outcome: 'Resolved — remote unlock',
+        responsible: 'Self-service (renter)', cost: '$0',
+        message: `Hi ${booking.renter}, we've unlocked your vehicle remotely — you're all set.`,
+        followUp: null
+      };
+    }
+
+    // --- Path 3: physical access needed ---
+    if (!resolution) {
+      if (input.reason === 'app_unlock_failed') {
+        if (vehicle.lockType === 'smart') {
+          push('warning', 'Remote unlock already attempted and failed — routing to physical access.');
+        } else {
+          push('warning', 'Vehicle has a traditional lock (no app unlock available) — routing to physical access.');
+        }
+      }
+
+      if (input.reason === 'locked_inside') {
+        push('check', 'Checking spare key availability for this vehicle…');
+        if (vehicle.spareKeyAvailable && input.location === 'at_host') {
+          push('ok', 'Spare key available on-site — no locksmith needed.');
+          resolution = {
+            status: 'resolved', outcome: 'Resolved — spare key handoff',
+            responsible: `${booking.host}`, cost: '$0',
+            message: `Hi ${booking.renter}, ${booking.host} has a spare key ready for you on-site.`,
+            followUp: `Notify ${booking.host} to hand off the spare key.`
+          };
+        } else if (vehicle.spareKeyAvailable && input.location !== 'at_host') {
+          push('warning', "Spare key exists, but renter is off-site — handoff isn't immediate.");
+        } else {
+          push('warning', 'No spare key on file — locksmith required.');
+        }
+      } else if (input.reason === 'lost_keys') {
+        push('warning', 'Keys reported lost — locksmith required for entry, plus key replacement regardless of lock type.');
+      } else if (input.reason === 'fob_dead' || input.reason === 'app_unlock_failed') {
+        push('warning', `${input.reason === 'fob_dead' ? 'Fob failure' : 'Lock system issue'} — locksmith required for entry.`);
+      }
+    }
+
+    // --- Identity verification gate ---
+    if (!resolution) {
+      push('check', 'Verifying renter identity on file…');
+      if (!booking.identityVerified) {
+        push('error', 'Identity not verified — holding locksmith dispatch.');
+        resolution = {
+          status: 'hold', outcome: 'On hold — identity verification required',
+          responsible: 'Support agent', cost: '—',
+          message: `Hi ${booking.renter}, we need to verify your identity before we can dispatch a locksmith. A support agent will reach out shortly.`,
+          followUp: 'Send ID verification link to renter, then re-run routing once confirmed.'
+        };
+      } else {
+        push('ok', 'Identity verified — cleared to dispatch.');
+      }
+    }
+
+    // --- Time of day + coverage area ---
+    if (!resolution) {
+      push('check', 'Checking time of request…');
+      let tier;
+      if (input.time === 'after_hours') {
+        push('warning', 'After-hours request — routing to emergency locksmith (premium rate).');
+        tier = 'emergency';
+      } else {
+        push('ok', 'Within business hours — standard locksmith list.');
+        tier = 'standard';
+      }
+
+      push('check', `Checking locksmith coverage for location: "${escapeHtml(input.locationLabel)}"…`);
+
+      if (input.location === 'away_remote' || input.locationIsCustom) {
+        push('error', input.locationIsCustom ? `Custom location (${escapeHtml(input.location)}) requires manual dispatch.` : 'Remote / limited-coverage area — no automated locksmith match.');
+        resolution = {
+          status: 'escalated', outcome: 'Escalated — manual coordination required',
+          responsible: 'Support agent', cost: 'Varies by provider',
+          message: `Hi ${booking.renter}, we're lining up help for your location (${input.locationLabel}) now — a support agent is coordinating this personally.`,
+          followUp: `Agent manually sources local locksmith or towing partner near: ${input.locationLabel}.`
+        };
+      } else {
+        const eta = tier === 'emergency' ? '35–50 min' : '15–25 min';
+        push('ok', `Locksmith matched — ETA ${eta}.`);
+
+        push('check', 'Determining cost responsibility…');
+        let cost, responsible;
+        if (input.reason === 'locked_inside') {
+          cost = tier === 'emergency' ? '$150 emergency call-out' : '$75 standard call-out';
+          responsible = 'Renter (per rental agreement)';
+        } else if (input.reason === 'lost_keys') {
+          cost = (tier === 'emergency' ? '$150' : '$75') + ' + key replacement (~$200–400, vehicle-dependent)';
+          responsible = 'Renter (lost-key policy)';
+        } else if (input.reason === 'fob_dead') {
+          cost = (tier === 'emergency' ? '$150 entry' : '$75 entry') + ' — fob replacement pending host review';
+          responsible = 'Split — entry fee to renter, fob wear reviewed by host';
+        } else {
+          cost = (tier === 'emergency' ? '$150' : '$75') + ' — pending review';
+          responsible = 'Pending review — possible platform-side lock failure';
+        }
+        push('ok', `Cost responsibility: ${responsible}.`);
+
+        if (tier === 'emergency') {
+          push('action', 'Emergency-rate approval task sent to host.');
+        }
+
+        resolution = {
+          status: tier === 'emergency' ? 'hold' : 'resolved',
+          outcome: `Locksmith dispatched (${tier === 'emergency' ? 'emergency' : 'standard'})`,
+          responsible, cost,
+          message: `Hi ${booking.renter}, help is on the way — ETA ${eta}.`,
+          followUp: tier === 'emergency' ? 'Awaiting host approval on emergency-rate call-out.' : null
+        };
+      }
+    }
+
+    push('done', 'Decision trace complete.');
+    return { steps, resolution };
+  }
+
+  // ---------- RENDER ----------
+  function renderTrace(steps, resolution) {
+    clearActiveTimeouts();
+    consoleEl.innerHTML = '';
+    const start = performance.now();
+    timerEl.textContent = 'running…';
+
+    steps.forEach((step, i) => {
+      const timeoutId = setTimeout(() => {
+        const line = document.createElement('div');
+        line.className = `log-line ${step.type}`;
+        line.innerHTML = `<span class="log-icon">${ICONS[step.type] || '·'}</span><span class="log-text ${step.type}">${step.text}</span>`;
+        consoleEl.appendChild(line);
+
+        if (i === steps.length - 1) {
+          timerEl.textContent = `resolved in ${((performance.now() - start) / 1000).toFixed(1)}s`;
+          const resTimeoutId = setTimeout(() => {
+            renderResolution(resolution);
+            setRunning(false);
+          }, 250);
+          activeTimeouts.push(resTimeoutId);
+        }
+      }, i * 260);
+      activeTimeouts.push(timeoutId);
+    });
+  }
+
+  function renderResolution(r) {
+    const card = document.createElement('div');
+    card.className = 'resolution-card';
+
+    const statusLabel = r.status === 'resolved' ? 'Resolved' : r.status === 'hold' ? 'On hold' : 'Escalated';
+
+    let messageBlock = '';
+    if (r.message) {
+      messageBlock = `
+        <div class="renter-message-row">
+          <div class="rlabel">Renter message</div>
+          <button type="button" class="copy-btn" data-copy>Copy</button>
+        </div>
+        <div class="renter-message">${escapeHtml(r.message)}</div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="resolution-status ${r.status}">${statusLabel}</div>
+      <p class="resolution-outcome">${escapeHtml(r.outcome)}</p>
+      <div class="resolution-grid">
+        <div class="resolution-item"><div class="rlabel">Responsible</div><div class="rvalue">${escapeHtml(r.responsible)}</div></div>
+        <div class="resolution-item"><div class="rlabel">Cost</div><div class="rvalue">${escapeHtml(r.cost)}</div></div>
+      </div>
+      ${messageBlock}
+      ${r.followUp ? `<div class="followup"><span>⚑</span><span>${escapeHtml(r.followUp)}</span></div>` : ''}
+    `;
+
+    if (r.message) {
+      const copyBtn = card.querySelector('[data-copy]');
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(r.message);
+        } catch (e) {
+          // Clipboard API unavailable (e.g. insecure context) — fail quietly,
+          // the text is still visible for manual copy.
+        }
+        copyBtn.textContent = 'Copied';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy';
+          copyBtn.classList.remove('copied');
+        }, 1600);
+      });
+    }
+
+    consoleEl.appendChild(card);
+  }
+
+  function setRunning(running) {
+    isRunning = running;
+    runBtn.classList.toggle('running', running);
+    runBtnLabel.textContent = running ? 'Running…' : 'Run routing';
+    intakePanel.classList.toggle('busy', running);
+    checkFormComplete();
+  }
+
+  runBtn.addEventListener('click', () => {
+    if (isRunning) return;
+    setRunning(true);
+
+    const isBookingCustom = bookingSelect.value === 'other';
+    const isReasonCustom = reasonSelect.value === 'other';
+    const isLocationCustom = locationSelect.value === 'other';
+
+    const input = {
+      bookingId: isBookingCustom ? bookingCustom.value.trim() : bookingSelect.value,
+      bookingIsCustom: isBookingCustom,
+      reason: isReasonCustom ? reasonCustom.value.trim() : reasonSelect.value,
+      reasonIsCustom: isReasonCustom,
+      location: isLocationCustom ? locationCustom.value.trim() : locationSelect.value,
+      locationLabel: isLocationCustom ? locationCustom.value.trim() : locationSelect.options[locationSelect.selectedIndex].text,
+      locationIsCustom: isLocationCustom,
+      time: timeSelect.value
+    };
+
+    const { steps, resolution } = runRouting(input);
+    renderTrace(steps, resolution);
+  });
+</script>
+
+</body>
+</html>
