@@ -22,10 +22,9 @@ A vehicle rental operator receives an urgent signal: a renter is locked out of t
 
 ---
 
-## 🛠️ Built With
-- **HTML5 / CSS3** (Custom properties, IBM Plex Mono/Sans typography, responsive grid layout)
-- **Vanilla JavaScript (ES6+)** (Dynamic state handling, event listeners, XSS-safe input escaping)
-- **GitHub Pages** (Continuous delivery & live hosting)
+## 🛠️ Built With & Workflow
+- **Claude (Anthropic)** — Prompt engineering, problem formulation, edge-case logic mapping, and full code generation (HTML/CSS/JS).
+- **GitHub & GitHub Pages** — Version control, hosting, and continuous deployment.
 
 ---
 
